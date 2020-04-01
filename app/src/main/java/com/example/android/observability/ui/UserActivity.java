@@ -18,16 +18,15 @@ package com.example.android.observability.ui;
 
 import android.arch.lifecycle.Observer;
 import android.arch.lifecycle.ViewModelProviders;
+import android.databinding.DataBindingUtil;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
-import android.widget.Button;
-import android.widget.EditText;
 import android.widget.TextView;
-
 import com.example.android.observability.Injection;
 import com.example.android.persistence.R;
+import com.example.android.persistence.databinding.ActivityUserBinding;
 
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.disposables.CompositeDisposable;
@@ -37,34 +36,24 @@ import io.reactivex.schedulers.Schedulers;
 /**
  * Main screen of the app. Displays a user name and gives the option to update the user name.
  */
-public class UserActivity extends AppCompatActivity {
+public class UserActivity extends AppCompatActivity implements ItemClicked {
 
     private static final String TAG = UserActivity.class.getSimpleName();
-
     private TextView mUserName;
-
-    private EditText mUserNameInput;
-
-    private Button mUpdateButton;
-
     private ViewModelFactory mViewModelFactory;
-
     private UserViewModel mViewModel;
-
+    private ActivityUserBinding activityUserBinding;
     private final CompositeDisposable mDisposable = new CompositeDisposable();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_user);
-
-        mUserName = findViewById(R.id.user_name);
-        mUserNameInput = findViewById(R.id.user_name_input);
-        mUpdateButton = findViewById(R.id.update_user);
-
+        activityUserBinding= DataBindingUtil.setContentView(this,R.layout.activity_user);
+        activityUserBinding.setView(this);
+        mUserName = activityUserBinding.userName;
         mViewModelFactory = Injection.provideViewModelFactory(this);
         mViewModel = ViewModelProviders.of(this, mViewModelFactory).get(UserViewModel.class);
-        mUpdateButton.setOnClickListener(v -> updateUserName());
+        activityUserBinding.setViewModel(mViewModel);
     }
 
     @Override
@@ -95,15 +84,19 @@ public class UserActivity extends AppCompatActivity {
     }
 
     private void updateUserName() {
-        String userName = mUserNameInput.getText().toString();
         // Disable the update button until the user name update has been done
-        mUpdateButton.setEnabled(false);
+        activityUserBinding.updateUser.setEnabled(false);
         // Subscribe to updating the user name.
         // Re-enable the button once the user name has been updated
-        mDisposable.add(mViewModel.updateUserName(userName)
+        mDisposable.add(mViewModel.updateUserName()
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(() -> mUpdateButton.setEnabled(true),
+                .subscribe(() ->  activityUserBinding.updateUser.setEnabled(true),
                         throwable -> Log.e(TAG, "Unable to update username", throwable)));
+    }
+
+    @Override
+    public void onUpdateClicked() {
+        updateUserName();
     }
 }
